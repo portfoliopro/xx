@@ -108,9 +108,9 @@ export default async function ProductDetailPage({ params }: Props) {
             </div>
 
             {/* Payment link (Gumroad, etc.) if the admin has set one */}
-            {product.payment_link && (
+            {product.payment_url && (
               <a
-                href={product.payment_link}
+                href={product.payment_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={buttonVariants({ variant: 'outline' }) + ' w-full h-11 rounded-xl font-bold gap-2'}
