@@ -34,6 +34,7 @@ export interface Product {
   category: string | null
   is_available: boolean
   slug: string | null
+  payment_link: string | null
   created_at: string
   business?: Business
 }
