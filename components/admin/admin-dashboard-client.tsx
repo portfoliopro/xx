@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import {
   ShieldCheck, Users, ShoppingBag, Store, Package,
-  CheckCircle, XCircle, BarChart3, AlertTriangle,
+  CheckCircle, XCircle, BarChart3, AlertTriangle, Link2, Save, ToggleLeft, ToggleRight,
 } from 'lucide-react'
-import type { Order, Business, Profile } from '@/lib/types'
-import { ORDER_STATUS_LABELS } from '@/lib/types'
+import type { Order, Business, Profile, Product } from '@/lib/types'
+import { ORDER_STATUS_LABELS, CATEGORY_LABELS } from '@/lib/types'
 import { ORDER_STATUS_COLORS } from '@/lib/status-colors'
 
 const ROLE_LABELS: Record<string, string> = {
@@ -36,7 +37,7 @@ interface Props {
   orders: Order[]
   businesses: Business[]
   users: Profile[]
-  productCount: number
+  products: Product[]
 }
 
 export default function AdminDashboardClient({
@@ -44,20 +45,39 @@ export default function AdminDashboardClient({
   orders: initialOrders,
   businesses: initialBusinesses,
   users: initialUsers,
-  productCount,
+  products: initialProducts,
 }: Props) {
   const supabase = createClient()
   const [orders, setOrders] = useState(initialOrders)
   const [businesses, setBusinesses] = useState(initialBusinesses)
   const [users, setUsers] = useState(initialUsers)
+  const [products, setProducts] = useState(initialProducts)
+  const [linkDrafts, setLinkDrafts] = useState<Record<string, string>>({})
+  const [savingLink, setSavingLink] = useState<string | null>(null)
 
   const stats = {
     orders: orders.length,
     businesses: businesses.length,
     users: users.length,
-    products: productCount,
+    products: products.length,
     pendingOrders: orders.filter((o) => o.status === 'pending').length,
     activeBusinesses: businesses.filter((b) => b.is_active).length,
+  }
+
+  async function toggleProductAvailability(id: string, current: boolean) {
+    const { error } = await supabase.from('products').update({ is_available: !current }).eq('id', id)
+    if (error) { toast.error('فشل التحديث: ' + error.message); return }
+    setProducts(products.map((p) => (p.id === id ? { ...p, is_available: !current } : p)))
+  }
+
+  async function savePaymentLink(id: string) {
+    const link = (linkDrafts[id] ?? '').trim()
+    setSavingLink(id)
+    const { error } = await supabase.from('products').update({ payment_link: link || null }).eq('id', id)
+    setSavingLink(null)
+    if (error) { toast.error('فشل حفظ رابط الدفع: ' + error.message); return }
+    setProducts(products.map((p) => (p.id === id ? { ...p, payment_link: link || null } : p)))
+    toast.success('تم حفظ رابط الدفع')
   }
 
   async function updateOrderStatus(orderId: string, status: string) {
@@ -141,6 +161,10 @@ export default function AdminDashboardClient({
           <TabsTrigger value="businesses" className="flex items-center gap-1.5">
             <Store className="w-4 h-4" />
             المشاريع
+          </TabsTrigger>
+          <TabsTrigger value="products" className="flex items-center gap-1.5">
+            <Package className="w-4 h-4" />
+            المنتجات
           </TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-1.5">
             <Users className="w-4 h-4" />
@@ -269,6 +293,82 @@ export default function AdminDashboardClient({
                           تفعيل
                         </>
                       )}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </TabsContent>
+
+        {/* PRODUCTS TAB */}
+        <TabsContent value="products">
+          <div className="flex flex-col gap-3">
+            {products.length === 0 ? (
+              <div className="text-center py-16 bg-card rounded-2xl border border-border text-muted-foreground">
+                <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="font-medium">لا توجد منتجات</p>
+              </div>
+            ) : (
+              products.map((product) => (
+                <div
+                  key={product.id}
+                  className="bg-card border border-border rounded-2xl px-5 py-4 flex flex-col gap-3"
+                >
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <Package className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-foreground truncate">{product.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {(product as any).business?.name ?? '—'} · {CATEGORY_LABELS[product.category ?? 'general'] ?? product.category}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${product.is_available ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}
+                      >
+                        {product.is_available ? 'متاح' : 'غير متاح'}
+                      </Badge>
+                      <button
+                        onClick={() => toggleProductAvailability(product.id, product.is_available)}
+                        className="text-muted-foreground hover:text-primary"
+                        title={product.is_available ? 'إيقاف المنتج' : 'تفعيل المنتج'}
+                      >
+                        {product.is_available ? (
+                          <ToggleRight className="w-5 h-5 text-primary" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment link editor */}
+                  <div className="flex items-center gap-2">
+                    <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <Input
+                      dir="ltr"
+                      placeholder="https://gumroad.com/l/..."
+                      className="text-left text-xs h-9 rounded-lg"
+                      defaultValue={product.payment_link ?? ''}
+                      onChange={(e) =>
+                        setLinkDrafts((d) => ({ ...d, [product.id]: e.target.value }))
+                      }
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-lg text-xs gap-1.5 shrink-0"
+                      disabled={savingLink === product.id}
+                      onClick={() => savePaymentLink(product.id)}
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      حفظ
                     </Button>
                   </div>
                 </div>
