@@ -29,8 +29,18 @@ export default function LoginPage() {
       toast.error('خطأ في تسجيل الدخول: ' + error.message)
       return
     }
-    // Redirect based on role
-    const role = data.user?.user_metadata?.role ?? 'customer'
+    // Redirect based on the user's REAL role from the profiles table —
+    // not user_metadata, which only reflects the role chosen at sign-up time
+    // and goes stale if an admin changes the user's role later.
+    let role = 'customer'
+    if (data.user) {
+      const { data: profileRow } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single()
+      role = profileRow?.role ?? 'customer'
+    }
     const redirectMap: Record<string, string> = {
       customer: '/customer',
       seller: '/seller',
