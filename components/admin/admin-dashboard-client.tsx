@@ -73,10 +73,10 @@ export default function AdminDashboardClient({
   async function savePaymentLink(id: string) {
     const link = (linkDrafts[id] ?? '').trim()
     setSavingLink(id)
-    const { error } = await supabase.from('products').update({ payment_link: link || null }).eq('id', id)
+    const { error } = await supabase.from('products').update({ payment_url: link || null }).eq('id', id)
     setSavingLink(null)
     if (error) { toast.error('فشل حفظ رابط الدفع: ' + error.message); return }
-    setProducts(products.map((p) => (p.id === id ? { ...p, payment_link: link || null } : p)))
+    setProducts(products.map((p) => (p.id === id ? { ...p, payment_url: link || null } : p)))
     toast.success('تم حفظ رابط الدفع')
   }
 
@@ -355,7 +355,7 @@ export default function AdminDashboardClient({
                       dir="ltr"
                       placeholder="https://gumroad.com/l/..."
                       className="text-left text-xs h-9 rounded-lg"
-                      defaultValue={product.payment_link ?? ''}
+                      defaultValue={product.payment_url ?? ''}
                       onChange={(e) =>
                         setLinkDrafts((d) => ({ ...d, [product.id]: e.target.value }))
                       }
