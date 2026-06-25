@@ -26,23 +26,38 @@ export default async function ProductDetailPage({ params }: Props) {
     profile = data
   }
 
-  // Try by slug first, then by id
-  let { data: product } = await supabase
+  // نجلب المنتج بدون تضمين (embed) العلاقة مع المشروع — هذا يتجنّب فشل
+  // الاستعلام كاملاً إذا كانت العلاقة (Foreign Key) بين products وbusinesses
+  // غير معروفة لذاكرة PostgREST. نجيب بيانات المشروع بطلب منفصل بعدها.
+  let { data: product, error: productError } = await supabase
     .from('products')
-    .select('*, business:businesses(*)')
+    .select('*')
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
+
+  if (productError) console.error('[products/[slug]] slug lookup error:', productError)
 
   if (!product) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('products')
-      .select('*, business:businesses(*)')
+      .select('*')
       .eq('id', slug)
-      .single()
+      .maybeSingle()
+    if (error) console.error('[products/[slug]] id lookup error:', error)
     product = data
   }
 
   if (!product) return notFound()
+
+  if (product.business_id) {
+    const { data: business, error: businessError } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', product.business_id)
+      .maybeSingle()
+    if (businessError) console.error('[products/[slug]] business lookup error:', businessError)
+    ;(product as any).business = business
+  }
 
   return (
     <main className="min-h-screen">
