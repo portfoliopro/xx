@@ -131,7 +131,7 @@ export default async function ProductDetailPage({ params }: Props) {
                 className={buttonVariants({ variant: 'outline' }) + ' w-full h-11 rounded-xl font-bold gap-2'}
               >
                 <CreditCard className="w-4 h-4" />
-                الدفع عبر الرابط الخاص بالمنتج
+                الآشتراك المجاني عبر الرابط الخاص بالمنتج
               </a>
             )}
 
