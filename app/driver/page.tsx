@@ -22,9 +22,9 @@ interface Props {
 
 export default function DriverDashboardClient({ profile, availableOrders: initialAvail, myOrders: initialMine, history: initialHistory, userId }: Props) {
   const supabase = createClient()
-  const [availableOrders, setAvailableOrders] = useState(initialAvail)
-  const [myOrders, setMyOrders] = useState(initialMine)
-  const [history, setHistory] = useState(initialHistory)
+  const [availableOrders, setAvailableOrders] = useState(initialAvail ?? [])
+  const [myOrders, setMyOrders] = useState(initialMine ?? [])
+  const [history, setHistory] = useState(initialHistory ?? [])
   const [loading, setLoading] = useState<string | null>(null)
 
   // جلب البيانات من Supabase مباشرة
